@@ -1,0 +1,704 @@
+{
+  "name": "prueba yamaha",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://dummyjson.com/products",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        160,
+        -208
+      ],
+      "id": "6db991cc-6f4c-4794-b006-026789426153",
+      "name": "Obtener productos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calidad del Catálogo (Data Quality)\nconst productos = $input.first().json.products;\nconst total = productos.length;\n\nconst con_marca = productos.filter(p => p.brand && p.brand.trim() !== '').length;\nconst pct_marca = Math.round((con_marca / total)*100*10) / 10;\n\nconst con_img = productos.filter(p => p.images && p.images.length > 0).length;\nconst pct_img = Math.round((con_img / total)*100*10) / 10;\n\nconst con_dimensiones = productos.filter(p => p.dimensions && typeof p.dimensions.width === 'number' && typeof p.dimensions.height === 'number' && typeof p.dimensions.depth === 'number').length;\nconst pct_dimension = Math.round((con_dimensiones / total)*100*10) / 10;\n\nconst calidad_catalogo = Math.round(((pct_marca + pct_img + pct_dimension) / 3 ) * 10) / 10;\n\nconst umbral = 90;\nconst estado = calidad_catalogo >= umbral ? 'OK' : 'ALERTA';\n\nreturn [{\n  json: {\n    nombre_kpi: 'Calidad catalogo KPI-01',\n    valor_kpi: calidad_catalogo,\n    estado,\n    umbral\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        -208
+      ],
+      "id": "fdad7518-2548-4798-a9ff-ed93f6226e76",
+      "name": "Calcular KPI"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "kpi_historico",
+          "mode": "list",
+          "cachedResultName": "kpi_historico"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "valor_kpi": "={{ $json.valor_kpi }}",
+            "umbral": "={{ $json.umbral }}",
+            "nombre_kpi": "={{ $json.nombre_kpi }}",
+            "status": "={{ $json.estado }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "nombre_kpi",
+              "displayName": "nombre_kpi",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "valor_kpi",
+              "displayName": "valor_kpi",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "umbral",
+              "displayName": "umbral",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_hora",
+              "displayName": "fecha_hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        608,
+        -208
+      ],
+      "id": "5994c3e1-3485-4db7-a917-9450fed8ce0a",
+      "name": "Guardar historico",
+      "credentials": {
+        "postgres": {
+          "id": "k4XMXc7bQTbi1J78",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "635e3a91-0668-40ea-b7ef-56d4e93aa945",
+              "leftValue": "={{ $json.valor_kpi }}",
+              "rightValue": "={{ $json.umbral }}",
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        -208
+      ],
+      "id": "e6818ff5-a609-4853-a377-d27307145625",
+      "name": "Verificar alerta"
+    },
+    {
+      "parameters": {
+        "sendTo": "emmanuelasuzagawa@gmail.com",
+        "subject": "Alerta de KPI, calidad por debajo del umbral minimo",
+        "message": "=<!DOCTYPE html> <html lang=\"es\"> <head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head> <body style=\"margin:0;padding:24px;background:#f4f4f4;font-family:Arial,sans-serif\">  <div style=\"max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e0e0e0\">    <!-- Header -->   <div style=\"background:#A32D2D;padding:20px 28px\">     <p style=\"color:#FCEBEB;font-size:18px;font-weight:bold;margin:0\">⚠ Alerta de KPI fuera de umbral</p>     <p style=\"color:#F7C1C1;font-size:13px;margin:6px 0 0\">Sistema de monitoreo de catálogo — n8n</p>   </div>    <div style=\"padding:24px 28px\">      <!-- Mensaje de advertencia -->     <div style=\"background:#FCEBEB;border-left:3px solid #E24B4A;padding:12px 16px;margin-bottom:20px\">       <p style=\"color:#791F1F;font-size:13px;margin:0;line-height:1.5\">         El KPI <strong>{{ $json.nombre_kpi }}</strong> esta por debajo el umbral configurado y requiere atención inmediata.       </p>     </div>      <!-- Tabla de datos -->     <table style=\"width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px\">       <tr style=\"background:#f9f9f9\">         <td style=\"padding:10px 14px;color:#888;font-size:13px;width:40%\">KPI</td>         <td style=\"padding:10px 14px;font-weight:bold;color:#222\">{{ $json.nombre_kpi }}</td>       </tr>       <tr>         <td style=\"padding:10px 14px;color:#888;font-size:13px;border-top:1px solid #f0f0f0\">Valor actual</td>         <td style=\"padding:10px 14px;font-weight:bold;color:#A32D2D;border-top:1px solid #f0f0f0\">{{ $json.valor_kpi }}</td>       </tr>       <tr style=\"background:#f9f9f9\">         <td style=\"padding:10px 14px;color:#888;font-size:13px;border-top:1px solid #f0f0f0\">Umbral configurado</td>         <td style=\"padding:10px 14px;font-weight:bold;color:#222;border-top:1px solid #f0f0f0\">{{ $json.umbral }}</td>       </tr>       <tr>         <td style=\"padding:10px 14px;color:#888;font-size:13px;border-top:1px solid #f0f0f0\">Estado</td>         <td style=\"padding:10px 14px;border-top:1px solid #f0f0f0\">           <span style=\"background:#FCEBEB;color:#791F1F;font-size:12px;padding:3px 10px;border-radius:4px;font-weight:bold\">ALERTA</span>         </td>       </tr>       <tr style=\"background:#f9f9f9\">         <td style=\"padding:10px 14px;color:#888;font-size:13px;border-top:1px solid #f0f0f0\">Fecha y hora</td>         <td style=\"padding:10px 14px;font-weight:bold;color:#222;border-top:1px solid #f0f0f0\">{{ $json.fecha_hora }}</td>       </tr>     </table>      <!-- Mensaje -->     <div style=\"background:#f9f9f9;border-radius:8px;padding:14px 16px;margin-bottom:24px\">       <p style=\"font-size:13px;color:#888;margin:0 0 4px;font-weight:bold\">Mensaje</p>       <p style=\"font-size:14px;color:#222;margin:0;line-height:1.6\">         El catálogo presenta una calidad por debajo del mínimo aceptable. Se recomienda revisar los productos con campos incompletos (brand, images, dimensions) y tomar acción correctiva.       </p>     </div>      <!-- Footer -->     <div style=\"border-top:1px solid #f0f0f0;padding-top:16px\">       <p style=\"font-size:12px;color:#aaa;margin:0;line-height:1.6\">         Este mensaje fue generado automáticamente por el sistema de monitoreo KPI.<br>         No responder a este correo.       </p>     </div>    </div> </div>  </body> </html> {{ $json.nombre_kpi }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1056,
+        -272
+      ],
+      "id": "661566b0-0816-42e3-8aeb-a76919ec83d8",
+      "name": "Enviar alerta",
+      "webhookId": "436e8c59-6eb0-427b-ab8f-5a946af04518",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "awcWuSiE26EgKOjB",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "kpi_actual",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        -208
+      ],
+      "id": "cfb900c0-aced-45eb-84b9-23c5209a9990",
+      "name": "Trigger KPI",
+      "webhookId": "57944463-a7c0-4b50-962e-2acdf0455faf"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ask_kpi",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -80,
+        160
+      ],
+      "id": "8f293402-c94c-4143-ae4f-cc3c438619c9",
+      "name": "Consultar KPI",
+      "webhookId": "f36cc6c4-7d43-4b88-bd57-bd720059171f"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "kpi_historico",
+          "mode": "list",
+          "cachedResultName": "kpi_historico"
+        },
+        "limit": 1,
+        "sort": {
+          "values": [
+            {
+              "column": "fecha_hora",
+              "direction": "DESC"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        144,
+        160
+      ],
+      "id": "e474cff4-c53b-41d9-9c1c-ef86004e893a",
+      "name": "Obtener ultimo KPI",
+      "credentials": {
+        "postgres": {
+          "id": "k4XMXc7bQTbi1J78",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5:3b\",\n  \"stream\": false,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Pregunta: {{ $('Consultar KPI').item.json.body.question }}\\n\\nDatos KPI:\\n- Nombre: {{ $('Obtener ultimo KPI').item.json.nombre_kpi }}\\n- Valor: {{ $('Obtener ultimo KPI').item.json.valor_kpi }}\\n- Estado: {{ $('Obtener ultimo KPI').item.json.status }}\\n- Umbral: {{ $('Obtener ultimo KPI').item.json.umbral }}\\n- Fecha: {{ $('Obtener ultimo KPI').item.json.fecha_hora }}\\n\\nResponde SOLO con un JSON con los campos: kpi_name, kpi_value, status, timestamp, mensaje.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        160
+      ],
+      "id": "c55023e3-d627-4016-9444-6415a91ad03f",
+      "name": "Nueva Respuesta"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.message.content;\nconst cleaned = raw.replace(/\\\\n/g, '').replace(/\\\\/g, '');\nconst parsed = JSON.parse(cleaned);\nreturn { json: parsed };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        160
+      ],
+      "id": "6ac570db-2053-433e-8cb5-5670414613f2",
+      "name": "formato limpio JSON "
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"response\": \"{{ $json.message.content }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        816,
+        160
+      ],
+      "id": "dafbdbb6-950a-4101-beb8-d5378bac0ec1",
+      "name": "Respuesta Agente"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ask_kpi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        576
+      ],
+      "id": "cdf6f44c-26ed-4155-91a7-6c569300c0ad",
+      "name": "Chat Agente",
+      "webhookId": "22ccb522-2234-4ac6-8592-e418bd51a3d0"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.question }}",
+        "options": {
+          "systemMessage": "Eres un asistente que responde preguntas sobre KPIs de un catálogo de productos.\nUsa siempre la herramienta consultar_kpis para obtener datos reales.\n\nReglas para interpretar el status:\n- Si status es ALERTA significa que el valor del KPI está POR DEBAJO del umbral mínimo aceptable.\n- Si status es OK significa que el valor del KPI está dentro del rango aceptable.\n\nResponde siempre en español y de forma concisa."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        160,
+        576
+      ],
+      "id": "4862d1e7-a789-4051-9861-1f9b0740dc9f",
+      "name": "Agente KPI",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "interaccion_agente",
+          "mode": "list",
+          "cachedResultName": "interaccion_agente"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "question": "={{ $('Chat Agente').item.json.body.question }}",
+            "exec_status": "={{ $json.exec_status }}",
+            "response": "={{ $json.response }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "question",
+              "displayName": "question",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "response",
+              "displayName": "response",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "exec_status",
+              "displayName": "exec_status",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        736,
+        464
+      ],
+      "id": "081fb368-0953-438f-a50b-3bab91d45de6",
+      "name": "Guardar chat",
+      "credentials": {
+        "postgres": {
+          "id": "k4XMXc7bQTbi1J78",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5:3b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        80,
+        768
+      ],
+      "id": "612761a1-4a39-4a90-8d22-6ef8fccc9206",
+      "name": "Modelo LLM",
+      "credentials": {
+        "ollamaApi": {
+          "id": "pDdf4PXPEZo7Y8rJ",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $('Agente KPI').first().json.output;\nconst question = $('Chat Agente').first().json.body.question;\n\nconst status = (output && output.length > 0) ? 'OK' : 'ERROR';\n\nreturn {\n  json: {\n    question: question,\n    response: output || 'Sin respuesta',\n    exec_status: status\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        464
+      ],
+      "id": "2f8423f4-5db4-427d-a438-13f1b49a0578",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Usa esta herramienta para consultar los KPIs almacenados en la base de datos. Úsala siempre que el usuario pregunte sobre alertas activas, valor del KPI, estado del catálogo o cualquier dato de monitoreo.",
+        "operation": "executeQuery",
+        "query": "SELECT nombre_kpi, valor_kpi, status, umbral, fecha_hora\nFROM kpi_historico\nORDER BY fecha_hora DESC\nLIMIT 5;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        288,
+        800
+      ],
+      "id": "7dbe67ca-3da5-4470-ae53-84dbaae43f39",
+      "name": "Consultar KPIs",
+      "credentials": {
+        "postgres": {
+          "id": "k4XMXc7bQTbi1J78",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Consulta\n\nCon este flujo se consulta en Tiempo Real por medio de endpoint /kpi_actual con el metodo GET. (Prueba en PostMan)",
+        "height": 128,
+        "width": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -432,
+        144
+      ],
+      "typeVersion": 1,
+      "id": "c3705fac-fe99-46b5-98b8-bb933f011a9d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Creación de Alertas\n\nFlujo que trae toda la informacion de la API y segun la calidad de los datos se crea una alerta que será enviada a GMAIL",
+        "height": 144,
+        "width": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -432,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "d5a95eb9-27b9-46c6-b799-80369b9fa09f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Agente IA\n\nEn este flujo se puede obtener respuesta a las consultas por meido de un agente. Toda consulta y respuesta es almacenada en un BD",
+        "height": 128,
+        "width": 288
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -432,
+        560
+      ],
+      "typeVersion": 1,
+      "id": "c54330d7-863e-443a-988f-bb748fece9be",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Obtener productos": {
+      "main": [
+        [
+          {
+            "node": "Calcular KPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular KPI": {
+      "main": [
+        [
+          {
+            "node": "Guardar historico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar historico": {
+      "main": [
+        [
+          {
+            "node": "Verificar alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar alerta": {
+      "main": [
+        [
+          {
+            "node": "Enviar alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger KPI": {
+      "main": [
+        [
+          {
+            "node": "Obtener productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar KPI": {
+      "main": [
+        [
+          {
+            "node": "Obtener ultimo KPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener ultimo KPI": {
+      "main": [
+        [
+          {
+            "node": "Nueva Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nueva Respuesta": {
+      "main": [
+        [
+          {
+            "node": "formato limpio JSON ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "formato limpio JSON ": {
+      "main": [
+        [
+          {
+            "node": "Respuesta Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Agente": {
+      "main": [
+        [
+          {
+            "node": "Agente KPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente KPI": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente KPI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Guardar chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar KPIs": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente KPI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "70566f48-1c8f-424a-b4cd-13a6ded0a281",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ffd5e477166510338bbb5d864ca3556663d77bbd1588008865ef45aeed969c41"
+  },
+  "id": "kFHdJALYBS5bapZo",
+  "tags": []
+}
