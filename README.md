@@ -220,3 +220,4 @@ Ver carpeta `evidencias/`:
 - **exec_status del agente**: se registra `OK` cuando el agente responde exitosamente y `ERROR` cuando falla o no genera respuesta (por ejemplo, caída de Ollama o pérdida de conexión). Esto permite trazabilidad básica de fallos en el log_agente.
 - **Autenticación en webhooks**: los endpoints no tienen autenticación. En producción se agregaría un token de seguridad en los headers.
 - **Schedule automático**: en n8n cloud gratuito el Cron trigger está limitado. En producción se configuraría ejecución automática diaria o por hora.
+- **Si DummyJSON no responde?**:El nodo HTTP Request falla y n8n detiene el workflow. Como mejora futura se agregaría un nodo de manejo de errores que registre el fallo y envíe una alerta.
